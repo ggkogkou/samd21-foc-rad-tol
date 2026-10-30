@@ -9,15 +9,7 @@ set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
 
 project(motor-controller-samd21 LANGUAGES C CXX ASM)
 
-# MCU selection
-set(MCU "G18A" CACHE STRING "Target MCU: G18A or J18A")
-
-string(TOUPPER "${MCU}" MCU)
-
-if (NOT MCU MATCHES "^(G18A|J18A)$")
-    message(FATAL_ERROR "Unsupported MCU: ${MCU}")
-endif ()
-
+# MCU configuration
 set(MCU_ARCH "cortex-m0plus")
 set(DEVICE_DEFINE "__SAMD21${MCU}__")
 set(LD_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/device_startup/SAMD21x18A.ld")
@@ -26,15 +18,12 @@ set(LD_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/device_startup/SAMD21x18A.ld")
 set(ETL_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/lib/etl/include")
 set(GCEM_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/lib/gcem/include")
 
-if (NOT EXISTS "${ETL_INCLUDE_DIR}/etl/expected.h")
-    message(FATAL_ERROR "ETL not found. Initialize Git submodules.")
-endif ()
-
-if (NOT EXISTS "${GCEM_INCLUDE_DIR}/gcem.hpp")
-    set(GCEM_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/lib/gcem")
-    if (NOT EXISTS "${GCEM_INCLUDE_DIR}/gcem.hpp")
-        message(FATAL_ERROR "GCEM not found. Initialize Git submodules.")
-    endif ()
+if (NOT EXISTS "${ETL_INCLUDE_DIR}/etl/expected.h" OR
+        NOT EXISTS "${GCEM_INCLUDE_DIR}/gcem.hpp")
+    message(FATAL_ERROR
+            "Missing Git submodules (ETL or GCEM).\n"
+            "Run: git submodule update --init --recursive"
+    )
 endif ()
 
 # Sources
