@@ -2,151 +2,33 @@ cmake_minimum_required(VERSION 3.20)
 
 set(CMAKE_SYSTEM_NAME Generic)
 set(CMAKE_SYSTEM_PROCESSOR arm)
-
 set(CMAKE_C_COMPILER arm-none-eabi-gcc)
 set(CMAKE_CXX_COMPILER arm-none-eabi-g++)
 set(CMAKE_ASM_COMPILER arm-none-eabi-gcc)
-
-set(CMAKE_C_COMPILER_FORCED TRUE)
-set(CMAKE_CXX_COMPILER_FORCED TRUE)
-set(CMAKE_ASM_COMPILER_FORCED TRUE)
-
 set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
 
 project(motor-controller-samd21 LANGUAGES C CXX ASM)
 
-set(MCU_FAMILY "samd21")
+# MCU configuration
 set(MCU_ARCH "cortex-m0plus")
-set(MCU "" CACHE STRING "Device variant: G18A or J18A")
+set(DEVICE_DEFINE "__SAMD21${MCU}__")
+set(LD_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/device_startup/SAMD21x18A.ld")
 
-string(TOUPPER "${MCU}" MCU_U)
-
-if (MCU_U STREQUAL "G18A")
-    set(MCU_MODEL "ATSAMD21G18A")
-    set(DEVICE_DEFINE "__SAMD21G18A__")
-    set(LD_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/device_startup/ATSAMD21G18A.ld")
-elseif (MCU_U STREQUAL "J18A")
-    set(MCU_MODEL "ATSAMD21J18A")
-    set(DEVICE_DEFINE "__SAMD21J18A__")
-    set(LD_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/device_startup/ATSAMD21J18A.ld")
-else ()
-    message(FATAL_ERROR "Set -DMCU=G18A or -DMCU=J18A (or use presets).")
-endif ()
-
-# ------------------------------------------------------------------------------
-# Flags
-# ------------------------------------------------------------------------------
-set(COMMON_FLAGS "-mcpu=${MCU_ARCH} -mthumb -mfloat-abi=soft -ffunction-sections -fdata-sections -Wall -Wextra -g3")
-set(OPT_FLAGS "-O3 -flto")
-
-set(CMAKE_C_FLAGS
-        "${COMMON_FLAGS} ${OPT_FLAGS} -std=gnu99"
-        CACHE INTERNAL "C compiler flags" FORCE
-)
-
-set(CMAKE_CXX_FLAGS
-        "${COMMON_FLAGS} ${OPT_FLAGS} -std=c++20 -fno-exceptions -fno-rtti -fno-threadsafe-statics -fno-unwind-tables -fno-asynchronous-unwind-tables"
-        CACHE INTERNAL "C++ compiler flags" FORCE
-)
-
-set(CMAKE_ASM_FLAGS
-        "${COMMON_FLAGS} ${OPT_FLAGS} -x assembler-with-cpp"
-        CACHE INTERNAL "ASM compiler flags" FORCE
-)
-
-set(CMAKE_EXE_LINKER_FLAGS
-        "-mcpu=${MCU_ARCH} -mthumb -mfloat-abi=soft -specs=nano.specs -specs=nosys.specs -T${LD_SCRIPT} -flto \
-     -Wl,--gc-sections -Wl,-Map=${PROJECT_NAME}.map,--cref -Wl,--no-warn-mismatch"
-        CACHE INTERNAL "Linker flags" FORCE
-)
-
-# ------------------------------------------------------------------------------
-# Defines
-# ------------------------------------------------------------------------------
-add_compile_definitions(
-        ${DEVICE_DEFINE}
-        DONT_USE_PREDEFINED_CORE_HANDLERS
-        DONT_USE_PREDEFINED_PERIPHERALS_HANDLERS
-        ETL_NO_STL
-        ETL_TARGET_DEVICE_ARM
-        ETL_COMPILER_GCC
-        ETL_CPP20_SUPPORTED
-)
-
-# ------------------------------------------------------------------------------
-# ETL (optional)
-# ------------------------------------------------------------------------------
-if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/lib/etl")
-    if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/lib/etl/CMakeLists.txt")
-        add_subdirectory(lib/etl)
-    endif ()
-
-    set(ETL_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/lib/etl/include")
-    if (EXISTS "${ETL_INCLUDE_DIR}")
-        message(STATUS "Found ETL at: ${ETL_INCLUDE_DIR}")
-    else ()
-        message(WARNING "ETL include directory not found at: ${ETL_INCLUDE_DIR}")
-    endif ()
-else ()
-    message(WARNING "ETL directory not found at: ${CMAKE_CURRENT_SOURCE_DIR}/lib/etl")
-endif ()
-
-# ------------------------------------------------------------------------------
-# GCEM (header-only)
-# ------------------------------------------------------------------------------
+# External libraries
+set(ETL_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/lib/etl/include")
 set(GCEM_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/lib/gcem/include")
-if (EXISTS "${GCEM_INCLUDE_DIR}/gcem.hpp")
-    message(STATUS "Found GCEM at: ${GCEM_INCLUDE_DIR}")
-else ()
-    set(GCEM_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/lib/gcem")
-    if (EXISTS "${GCEM_INCLUDE_DIR}/gcem.hpp")
-        message(STATUS "Found GCEM at: ${GCEM_INCLUDE_DIR}")
-    else ()
-        message(WARNING "GCEM not found under lib/gcem (submodule not initialized?)")
-    endif ()
+
+if (NOT EXISTS "${ETL_INCLUDE_DIR}/etl/expected.h" OR
+        NOT EXISTS "${GCEM_INCLUDE_DIR}/gcem.hpp")
+    message(FATAL_ERROR
+            "Missing Git submodules (ETL or GCEM).\n"
+            "Run: git submodule update --init --recursive"
+    )
 endif ()
 
-# ------------------------------------------------------------------------------
-# Includes
-# ------------------------------------------------------------------------------
-include_directories(
-        src/
-        src/config/sam_d21_xpro
-        src/config/sam_d21_xpro/peripheral/adc
-        src/config/sam_d21_xpro/peripheral/clock
-        src/config/sam_d21_xpro/peripheral/dmac
-        src/config/sam_d21_xpro/peripheral/eic
-        src/config/sam_d21_xpro/peripheral/evsys
-        src/config/sam_d21_xpro/peripheral/nvic
-        src/config/sam_d21_xpro/peripheral/nvmctrl
-        src/config/sam_d21_xpro/peripheral/port
-        src/config/sam_d21_xpro/peripheral/sercom/usart
-        src/config/sam_d21_xpro/peripheral/sercom/spi_master
-        src/config/sam_d21_xpro/peripheral/systick
-        src/config/sam_d21_xpro/peripheral/tc
-        src/config/sam_d21_xpro/peripheral/tcc
-
-        src/packs/ATSAMD21_DFP
-        src/packs/ATSAMD21_DFP/component
-        src/packs/ATSAMD21_DFP/instance
-        src/packs/ATSAMD21_DFP/pio
-
-        src/packs/CMSIS/CMSIS/Core/Include
-
-        device_startup
-
-        drivers
-        drivers/samd21_peripherals
-
-        ${ETL_INCLUDE_DIR}
-        ${GCEM_INCLUDE_DIR}
-)
-
-# ------------------------------------------------------------------------------
 # Sources
-# ------------------------------------------------------------------------------
 set(SOURCES
-        # Main application
+        # Application
         src/main.cpp
         src/svpwm.cpp
         src/pid.cpp
@@ -161,7 +43,7 @@ set(SOURCES
         src/HealthMonitor.cpp
         src/ResetBreadcrumb.cpp
 
-        # System initialization and configuration
+        # Startup and initialization
         src/config/sam_d21_xpro/initialization.c
         device_startup/InterruptHandlers.cpp
         device_startup/DeviceStartup.cpp
@@ -184,54 +66,122 @@ set(SOURCES
         src/config/sam_d21_xpro/peripheral/tc/plib_tc4.c
         src/config/sam_d21_xpro/peripheral/tcc/plib_tcc0.c
 
+        # Drivers
         drivers/as5047p.cpp
         drivers/drv8316.cpp
-
         drivers/samd21_peripherals/GenericClockController.cpp
         drivers/samd21_peripherals/ADC.cpp
 )
 
-# ------------------------------------------------------------------------------
-# Targets
-# ------------------------------------------------------------------------------
+# Firmware target
 add_executable(${PROJECT_NAME}.elf ${SOURCES})
 
-if (TARGET etl)
-    target_link_libraries(${PROJECT_NAME}.elf PRIVATE etl)
-    message(STATUS "Linking with ETL target")
-endif ()
-
-find_program(CMAKE_OBJCOPY arm-none-eabi-objcopy REQUIRED)
-find_program(CMAKE_SIZE arm-none-eabi-size REQUIRED)
-
-add_custom_target(${PROJECT_NAME}.hex ALL
-        DEPENDS ${PROJECT_NAME}.elf
-        COMMAND ${CMAKE_OBJCOPY} -O ihex ${PROJECT_NAME}.elf ${PROJECT_NAME}.hex
-        COMMENT "Creating HEX file"
+set_target_properties(${PROJECT_NAME}.elf PROPERTIES
+        C_STANDARD 99
+        C_STANDARD_REQUIRED ON
+        C_EXTENSIONS ON
+        CXX_STANDARD 20
+        CXX_STANDARD_REQUIRED ON
+        CXX_EXTENSIONS OFF
 )
 
-add_custom_target(${PROJECT_NAME}.bin ALL
-        DEPENDS ${PROJECT_NAME}.elf
-        COMMAND ${CMAKE_OBJCOPY} -O binary ${PROJECT_NAME}.elf ${PROJECT_NAME}.bin
-        COMMENT "Creating BIN file"
+# Include directories
+target_include_directories(${PROJECT_NAME}.elf PRIVATE
+        src
+        src/config/sam_d21_xpro
+        src/config/sam_d21_xpro/peripheral/adc
+        src/config/sam_d21_xpro/peripheral/clock
+        src/config/sam_d21_xpro/peripheral/dmac
+        src/config/sam_d21_xpro/peripheral/eic
+        src/config/sam_d21_xpro/peripheral/evsys
+        src/config/sam_d21_xpro/peripheral/nvic
+        src/config/sam_d21_xpro/peripheral/nvmctrl
+        src/config/sam_d21_xpro/peripheral/port
+        src/config/sam_d21_xpro/peripheral/sercom/usart
+        src/config/sam_d21_xpro/peripheral/sercom/spi_master
+        src/config/sam_d21_xpro/peripheral/systick
+        src/config/sam_d21_xpro/peripheral/tc
+        src/config/sam_d21_xpro/peripheral/tcc
+
+        src/packs/ATSAMD21_DFP
+        src/packs/ATSAMD21_DFP/component
+        src/packs/ATSAMD21_DFP/instance
+        src/packs/ATSAMD21_DFP/pio
+        src/packs/CMSIS/CMSIS/Core/Include
+
+        device_startup
+        drivers
+        drivers/samd21_peripherals
+
+        ${ETL_INCLUDE_DIR}
+        ${GCEM_INCLUDE_DIR}
 )
 
-add_custom_target(size ALL
-        DEPENDS ${PROJECT_NAME}.elf
-        COMMAND ${CMAKE_SIZE} --format=berkeley ${PROJECT_NAME}.elf
-        COMMENT "Size information:"
+# Preprocessor definitions
+target_compile_definitions(${PROJECT_NAME}.elf PRIVATE
+        ${DEVICE_DEFINE}
+        DONT_USE_PREDEFINED_CORE_HANDLERS
+        DONT_USE_PREDEFINED_PERIPHERALS_HANDLERS
+
+        ETL_NO_STL
+        ETL_TARGET_DEVICE_ARM
+        ETL_COMPILER_GCC
+        ETL_CPP20_SUPPORTED
 )
 
-add_custom_target(size_sections ALL
-        DEPENDS ${PROJECT_NAME}.elf
-        COMMAND ${CMAKE_SIZE} -A ${PROJECT_NAME}.elf
-        COMMENT "Section size information:"
+# Compiler options
+target_compile_options(${PROJECT_NAME}.elf PRIVATE
+        -mcpu=${MCU_ARCH}
+        -mthumb
+        -mfloat-abi=soft
+
+        -O3
+        -flto
+        -g3
+
+        -ffunction-sections
+        -fdata-sections
+        -Wall
+        -Wextra
+
+        $<$<COMPILE_LANGUAGE:CXX>:-fno-exceptions>
+        $<$<COMPILE_LANGUAGE:CXX>:-fno-rtti>
+        $<$<COMPILE_LANGUAGE:CXX>:-fno-threadsafe-statics>
+        $<$<COMPILE_LANGUAGE:CXX>:-fno-unwind-tables>
+        $<$<COMPILE_LANGUAGE:CXX>:-fno-asynchronous-unwind-tables>
 )
 
+# Linker options
+target_link_options(${PROJECT_NAME}.elf PRIVATE
+        -mcpu=${MCU_ARCH}
+        -mthumb
+        -mfloat-abi=soft
+
+        -specs=nano.specs
+        -specs=nosys.specs
+        -T${LD_SCRIPT}
+
+        -flto
+        -Wl,--gc-sections
+        -Wl,-Map=${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.map,--cref
+        -Wl,--no-warn-mismatch
+)
+
+set_property(TARGET ${PROJECT_NAME}.elf APPEND PROPERTY
+        LINK_DEPENDS "${LD_SCRIPT}"
+)
+
+# Memory usage
+find_program(SIZE arm-none-eabi-size REQUIRED)
+
+add_custom_command(TARGET ${PROJECT_NAME}.elf POST_BUILD
+        COMMAND ${SIZE} --format=berkeley $<TARGET_FILE:${PROJECT_NAME}.elf>
+        COMMENT "Firmware memory usage"
+        VERBATIM
+)
+
+# Build information
+message(STATUS "Target MCU: ATSAMD21${MCU}")
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
-message(STATUS "Target MCU: ${MCU_MODEL}")
-message(STATUS "Target architecture: ${MCU_ARCH}")
-message(STATUS "C Compiler: ${CMAKE_C_COMPILER}")
-message(STATUS "CXX Compiler: ${CMAKE_CXX_COMPILER}")
-message(STATUS "ASM Compiler: ${CMAKE_ASM_COMPILER}")
+message(STATUS "Compiler: ${CMAKE_CXX_COMPILER}")
 message(STATUS "Linker script: ${LD_SCRIPT}")

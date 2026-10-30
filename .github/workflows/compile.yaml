@@ -1,0 +1,45 @@
+
+name: Build Firmware
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build ATSAMD21G18A
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Build Docker image
+        run: docker build -t samd21-toolchain .
+
+      - name: Configure and build firmware
+        run: |
+          docker run --rm \
+            -v "$PWD:/workspace" \
+            -w /workspace \
+            samd21-toolchain \
+            sh -c "cmake --preset g18a && cmake --build build/g18a --parallel 2"
+
+      - name: Upload firmware artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware-g18a
+          path: |
+            build/g18a/*.elf
+            build/g18a/*.hex
+            build/g18a/*.bin
+            build/g18a/*.map
+          if-no-files-found: error
+          retention-days: 14
+
