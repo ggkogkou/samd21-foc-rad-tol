@@ -3,6 +3,10 @@ name: Build Firmware
 
 on:
   push:
+    branches:
+      - master
+    tags:
+      - 'v*'
   pull_request:
   workflow_dispatch:
 
@@ -12,7 +16,10 @@ permissions:
 jobs:
   build:
     name: Build ATSAMD21G18A
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout repository
@@ -37,9 +44,19 @@ jobs:
           name: firmware-g18a
           path: |
             build/g18a/*.elf
-            build/g18a/*.hex
-            build/g18a/*.bin
             build/g18a/*.map
           if-no-files-found: error
           retention-days: 14
 
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            build/g18a/motor-controller-samd21.elf \
+            build/g18a/motor-controller-samd21.map \
+            --verify-tag \
+            --generate-notes \
+            --title "${GITHUB_REF_NAME}"
