@@ -12,7 +12,7 @@
         "CMAKE_BUILD_TYPE": "Debug"
       }
     },
-    { "name": "j18a", "inherits": "base", "cacheVariables": { "MCU": "J18A" } },
-    { "name": "g18a", "inherits": "base", "cacheVariables": { "MCU": "G18A" } }
+    { "name": "g18a", "inherits": "base", "cacheVariables": { "MCU": "G18A" } },
+    { "name": "j18a", "inherits": "base", "cacheVariables": { "MCU": "J18A" } }
   ]
 }

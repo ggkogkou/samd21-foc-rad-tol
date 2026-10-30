@@ -17,7 +17,7 @@ project(motor-controller-samd21 LANGUAGES C CXX ASM)
 
 set(MCU_FAMILY "samd21")
 set(MCU_ARCH "cortex-m0plus")
-set(MCU "" CACHE STRING "Device variant: G18A or J18A")
+set(MCU "G18A" CACHE STRING "Device variant: G18A or J18A")
 
 string(TOUPPER "${MCU}" MCU_U)
 
