@@ -8,7 +8,7 @@ The PMSM controller is built with discrete COTS components, individually tested 
 
 ## Development Setup
 
-### 1. Prerequisites & Dependencies
+### 1. Installing the Dependencies
 
 #### Linux (Debian / Ubuntu)
 Install the build system, ARM toolchain, and debugging utilities via `apt`:
@@ -24,16 +24,10 @@ Install all required tools in PowerShell or Command Prompt (run as Administrator
 ```cmd
 winget install Kitware.CMake Ninja-build.Ninja Arm.ArmGnuToolchain xpack-dev-tools.openocd-xpack MinGW.w64
 ```
-
-> **Note:** After installation on Windows, close and reopen your terminal or VS Code so the updated `PATH` environment variables take effect.
-
 ---
 
 ### 2. Cloning the Repository & Submodules
 
-This repository uses Git submodules. Choose one of the following methods:
-
-#### Option A: Clone with submodules included (Recommended)
 Recursively clone the repository to pull all required submodules automatically:
 
 ```bash
@@ -41,44 +35,15 @@ git clone --recursive https://github.com/ggkogkou/motor-controller-samd.git
 cd motor-controller-samd
 ```
 
-#### Option B: Pull submodules after cloning
-If you have already cloned the repository without submodules, run:
-
-```bash
-cd motor-controller-samd
-git submodule update --init --recursive
-```
-
 ---
 
-## Building the Firmware
+## Building the ELF Target
 
-The project uses CMake Presets configured for the target SAMD21 microcontroller variants (`g18a` or `j18a`) to load the appropriate Device Family Pack (DFP).
+The project uses CMake Presets configured for the target SAMD21 microcontroller variants (`g18a` or `j18a`) to load the appropriate DFP. Configure and build for either `g18a` or `j18a`:
 
-### Build Commands
+```bash
+cmake --preset g18a
+cmake --build build/g18a --parallel
+```
 
-1. **Configure the project for your target MCU:**
-
-   ```bash
-   # For SAMD21G18A
-   cmake --preset g18a
-
-   # For SAMD21J18A
-   cmake --preset j18a
-   ```
-
-2. **Compile the firmware:**
-
-   ```bash
-   # Build SAMD21G18A target
-   cmake --build --preset g18a
-
-   # Build SAMD21J18A target
-   cmake --build --preset j18a
-   ```
-
-3. **Clean build directory (Optional):**
-
-   ```bash
-   cmake --build --preset g18a --target clean
-   ```
+The ELF is generated at `build/g18a/motor-controller-samd21.elf`. Replace `g18a` with `j18a` for the alternative target.
